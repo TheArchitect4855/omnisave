@@ -56,6 +56,14 @@ public class SaveManager
 	}
 
 	/// <summary>
+	/// Resets all save data. This does NOT persist the newly-reset data. (call <c>Load*</c> to do so)
+	/// </summary>
+	public void Reset()
+	{
+		foreach (var item in _saveItems) item.Set(null);
+	}
+
+	/// <summary>
 	/// Saves data to a stream.
 	/// </summary>
 	/// <param name="stream">The stream to save to.</param>
