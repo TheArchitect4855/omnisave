@@ -60,7 +60,7 @@ public class SaveManager
 	/// </summary>
 	public void Reset()
 	{
-		foreach (var item in _saveItems) item.Set(null);
+		lock (s_lock) foreach (var item in _saveItems) item.Set(null);
 	}
 
 	/// <summary>
