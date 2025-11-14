@@ -34,7 +34,9 @@ All you need to do is annotate the data you want to save with the `[Save]` attri
 
 ```xml
 <ItemGroup>
-	<ProjectReference Include="path/to/the/dll" />
+	<Reference Include="OmniSave">
+		<HintPath>path/to/dll</HintPath>
+	</Reference>
 </ItemGroup>
 ```
 
