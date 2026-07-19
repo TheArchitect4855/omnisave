@@ -34,6 +34,8 @@ public static class BinarySerializer
 	/// <exception cref="DeserializeException">Thrown if the requested type is not supported.</exception>
 	public static object? Deserialize(Type type, BinaryReader reader)
 	{
+		if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) return Deserialize(type.GenericTypeArguments[0], reader);
+
 		var hasValue = reader.ReadBoolean();
 		if (!hasValue) return null;
 
