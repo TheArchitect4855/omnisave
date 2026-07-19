@@ -9,26 +9,34 @@ public class BinarySaveAdapter : ISaveAdapter
 	{
 		var reader = new BinaryReader(stream);
 		var count = reader.ReadInt32();
-		if (count <= 0) return;
 
-		var saveItem = 0;
-		var key = reader.ReadString();
-		while (saveItem < saveItems.Count)
+		var saveItemIndex = 0;
+		for (var i = 0; i < count && saveItemIndex < saveItems.Count; i += 1)
 		{
-			var cmp = key.CompareTo(saveItems[saveItem].Key);
-			if (cmp < 0) throw new LoadException("A key exists in the save file that does not exist in the program. Saved items cannot be removed, as their type information is necessary to deserialize the save file.");
-			if (cmp > 0)
+			var key = reader.ReadString();
+			var size = reader.ReadUInt32();
+
+			var cmp = key.CompareTo(saveItems[saveItemIndex].Key);
+			while (cmp > 0 && saveItemIndex < saveItems.Count)
 			{
-				// Key exists in program, but not in save file. This is fine.
-				saveItem += 1;
+				// Key exists in program, but not in save file.
+				saveItemIndex += 1;
+				cmp = key.CompareTo(saveItems[saveItemIndex].Key);
+			}
+
+			if (saveItemIndex >= saveItems.Count) break;
+
+			if (cmp < 0)
+			{
+				// Key exists in save file, but not in program.
+				reader.BaseStream.Seek(size, SeekOrigin.Current);
 				continue;
 			}
 
-			var value = BinarySerializer.Deserialize(saveItems[saveItem].ValueType, reader);
-			saveItems[saveItem].Set(value);
-
-			if (--count == 0) break;
-			key = reader.ReadString();
+			var saveItem = saveItems[saveItemIndex];
+			var value = BinarySerializer.Deserialize(saveItem.ValueType, reader);
+			saveItem.Set(value);
+			saveItemIndex += 1;
 		}
 	}
 
@@ -36,19 +44,24 @@ public class BinarySaveAdapter : ISaveAdapter
 
 	public void Save(Stream stream, IReadOnlyList<SaveItem> saveItems)
 	{
-		var writer = new BinaryWriter(stream);
-		writer.Write(saveItems.Count);
+		var streamWriter = new BinaryWriter(stream);
+		streamWriter.Write(saveItems.Count);
+
+		var buffer = new MemoryStream();
+		var bufferWriter = new BinaryWriter(buffer);
 		foreach (var item in saveItems)
 		{
-			writer.Write(item.Key);
-			BinarySerializer.Serialize(item.Get(), writer);
+			buffer.SetLength(0);
+			BinarySerializer.Serialize(item.Get(), bufferWriter);
+
+			var size = (uint)buffer.Position;
+			streamWriter.Write(item.Key);
+			streamWriter.Write(size);
+
+			buffer.Position = 0;
+			buffer.CopyTo(streamWriter.BaseStream);
 		}
 	}
 
 	public Task SaveAsync(Stream stream, IReadOnlyList<SaveItem> saveItems) => Task.Run(() => Save(stream, saveItems));
-
-	public class LoadException : Exception
-	{
-		public LoadException(string message) : base(message) { }
-	}
 }
